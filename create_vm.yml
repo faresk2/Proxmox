@@ -1,0 +1,38 @@
+- name: Création d'une VM Proxmox via Web
+  hosts: localhost
+  gather_facts: false
+  # On n'utilise plus vars_files, les variables viendront de Semaphore
+
+  tasks:
+    - name: Cloner le template
+      community.proxmox.proxmox_kvm:
+        api_host: "{{ proxmox_host }}"
+        api_user: "{{ proxmox_user }}"
+        api_token_id: "{{ proxmox_token_id }}"
+        api_token_secret: "{{ proxmox_token_secret }}"
+        node: "{{ proxmox_node }}"
+
+        # Variables dynamiques du formulaire
+        clone: "{{ template_id }}"
+        name: "{{ vm_name }}"
+        newid: "{{ vm_id }}"
+        memory: "{{ vm_memory }}"
+        cores: "{{ vm_cores }}"
+
+        # Configuration fixe
+        cpu: host
+        scsihw: virtio-scsi-pci
+        full: false
+        timeout: 300
+
+        net:
+          net0: "model=virtio,bridge=vmbr0,firewall=1"
+
+        ciuser: "{{ ci_user }}"
+        # Astuce : On passe la clé directement en texte, plus besoin de fichier
+        sshkeys: "{{ ssh_key_content }}"
+        ipconfig:
+          ipconfig0: "ip=dhcp"
+
+        onboot: true
+        state: present
