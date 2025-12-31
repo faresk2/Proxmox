@@ -1,38 +1,51 @@
 - name: Création d'une VM Proxmox via Web
   hosts: localhost
   gather_facts: false
-  # On n'utilise plus vars_files, les variables viendront de Semaphore
 
   tasks:
+    # --- TÂCHE 1 : CORRECTION DU BUG (Installe le pilote manquant) ---
+    - name: Installer le pilote Python Proxmoxer
+      ansible.builtin.pip:
+        name:
+          - proxmoxer
+          - requests
+        state: present
+
+    # --- TÂCHE 2 : CRÉATION DE LA VM ---
     - name: Cloner le template
       community.proxmox.proxmox_kvm:
+        # Authentification (Vient des Secrets Semaphore)
         api_host: "{{ proxmox_host }}"
         api_user: "{{ proxmox_user }}"
         api_token_id: "{{ proxmox_token_id }}"
         api_token_secret: "{{ proxmox_token_secret }}"
         node: "{{ proxmox_node }}"
 
-        # Variables dynamiques du formulaire
+        # Paramètres Dynamiques (Vient du Formulaire "Enquêtes" Semaphore)
         clone: "{{ template_id }}"
         name: "{{ vm_name }}"
         newid: "{{ vm_id }}"
         memory: "{{ vm_memory }}"
         cores: "{{ vm_cores }}"
 
-        # Configuration fixe
-        cpu: host
-        scsihw: virtio-scsi-pci
-        full: false
+        # Optimisations Hardware (Fixe)
+        cpu: host               # Performance Max
+        scsihw: virtio-scsi-pci # Disque Rapide
+        
+        # Stockage
+        full: false             # Linked Clone (Création en 2 sec)
         timeout: 300
 
+        # Réseau
         net:
           net0: "model=virtio,bridge=vmbr0,firewall=1"
 
+        # Cloud-init
         ciuser: "{{ ci_user }}"
-        # Astuce : On passe la clé directement en texte, plus besoin de fichier
-        sshkeys: "{{ ssh_key_content }}"
+        sshkeys: "{{ ssh_key_content }}" # Vient des Secrets
         ipconfig:
           ipconfig0: "ip=dhcp"
 
+        # État final
         onboot: true
         state: present
